@@ -12,11 +12,8 @@ jobs:
           name: build site
           command: yarn build
       - run:
-          name: Install and configure dependencies
-          command: |
-            npm install -g --silent gh-pages@2.0.1
-            git config user.email "coldgust@outlook.com"
-            git config user.name "ci-build"
-      - run:
-          name: Deploy docs to gh-pages branch
-          command: gh-pages --dist dist
+          name: chmod
+          command: sudo chmod 777 ./deploy.sh
+      - deploy:
+          name: Deploy
+          command: sh ./deploy.sh
