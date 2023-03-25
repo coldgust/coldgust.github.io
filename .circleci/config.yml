@@ -7,10 +7,6 @@ jobs:
       - run:
           name: Install
           command: yarn install
-      - save_cache:
-          paths:
-            - node_modules
-          key: dependencies-
       - run:
           name: build site
           command: yarn build
