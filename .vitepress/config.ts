@@ -2,21 +2,21 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Coldgust's Blog",
-  description: "A VitePress Site",
+  title: "Coldgust",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Examples', link: '/markdown-examples' }
+      { text: 'Blogs', link: '/blogs/index.md'},
+      { text: 'Documents', link: '/docs/index.md' }
     ],
 
     sidebar: [
       {
-        text: 'Examples',
+        text: 'Blogs and Docs',
         items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
+          { text: 'blogs', link: '/blogs/index.md' },
+          { text: 'docs', link: '/docs/index.md' }
         ]
       }
     ],
