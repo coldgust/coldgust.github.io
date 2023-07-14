@@ -1,28 +1,36 @@
-import { defineConfig } from 'vitepress'
+import {defineConfig} from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Coldgust",
-  themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
-    nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Blogs', link: '/blogs/index.md'},
-      { text: 'Documents', link: '/docs/index.md' }
-    ],
+    title: "Coldgust",
+    themeConfig: {
+        // https://vitepress.dev/reference/default-theme-config
+        nav: [
+            {text: 'Home', link: '/'},
+            {
+                text: '分类',
+                items: [
+                    {
+                        text: 'Linux性能分析',
+                        link: '/linux-performance/index.md'
+                    }
+                ]
+            }
+        ],
 
-    sidebar: [
-      {
-        text: 'Blogs and Docs',
-        items: [
-          { text: 'blogs', link: '/blogs/index.md' },
-          { text: 'docs', link: '/docs/index.md' }
+        sidebar: {
+            'linux-performance': [
+                {
+                    text: 'Linux性能分析',
+                    items: [
+                        {text: '预览', link: '/linux-performance/index.md'},
+                    ]
+                }
+            ]
+        },
+
+        socialLinks: [
+            {icon: 'github', link: 'https://github.com/coldgust'}
         ]
-      }
-    ],
-
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/coldgust'}
-    ]
-  }
+    }
 })

@@ -5,13 +5,10 @@ title: home
 
 hero:
   name: "Coldgust's Blog"
-  tagline: blogs and docs inside
+  tagline: 分类
   actions:
     - theme: brand
-      text: Blogs
-      link: /blogs/index.md
-    - theme: alt
-      text: Docs
-      link: /docs/index.md
+      text: Linux性能分析
+      link: /linux-performance/index.md
 ---
 
