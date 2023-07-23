@@ -1,11 +1,14 @@
 {
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "vitepress": "^1.0.0-beta.5",
+    "vitepress": "^1.0.0-beta.6",
     "vue": "^3.3.4"
+  },
+  "devDependencies": {
+    "prettier": "3.0.0"
   }
 }
