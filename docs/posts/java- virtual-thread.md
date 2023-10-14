@@ -42,6 +42,75 @@ date: 2023-10-07
 
 ## 创建和运行虚拟线程
 
+`Thread`和`Thread.Builder`都可以用来创建虚拟线程和平台线程。`java.util.concurrent.Executors`类提供可以给每个任务创建虚拟线程的`ExecutorService`。
+
+### 用`Thread`类和`Thread.Builder`接口创建虚拟线程
+
+调用`Thread.ofVirtual()`方法创建`Thread.Builder`的一个实例去创建虚拟线程。
+
+下面的例子创建和启动了一个打印信息的虚拟线程。它调用`join`方法来等待虚拟线程结束（这可以让你看到打印的信息在main线程终止前）。
+
+```java
+Thread thread = Thread.ofVirtual().start(() -> System.out.println("Hello"));
+thread.join();
+```
+
+`Thread.Builder`接口可以让你创建带有属性（例如线程名称）的线程。接口`Thread.Builder.OfPlatform`用来创建平台线程，而`Thread.Builder.OfVirtual`用来创建虚拟线程。
+
+下面的例子使用`Thread.Builder`接口创建了一个名为`MyThread`的虚拟线程。
+
+```java
+Thread.Builder builder = Thread.ofVirtual().name("MyThread");
+Runnable task = () -> {
+    System.out.println("Running thread");
+};
+Thread t = builder.start(task);
+System.out.println("Thread t name: " + t.getName());
+t.join();
+```
+
+下面的例子使用`Thread.Builder`创建和启动了两个虚拟线程。
+
+```java
+Thread.Builder builder = Thread.ofVirtual().name("worker-", 0);
+Runnable task = () -> {
+    System.out.println("Thread ID: " + Thread.currentThread().threadId());
+};
+
+// name "worker-0"
+Thread t1 = builder.start(task);   
+t1.join();
+System.out.println(t1.getName() + " terminated");
+
+// name "worker-1"
+Thread t2 = builder.start(task);   
+t2.join();  
+System.out.println(t2.getName() + " terminated");
+```
+
+输出如下：
+```text
+Thread ID: 21
+worker-0 terminated
+Thread ID: 24
+worker-1 terminated
+```
+
+### 使用`Executors.newVirtualThreadPerTaskExecutor()`方法创建和运行虚拟线程
+
+Executors允许你将线程的创建和管理与应用程序的其它部分分开。
+
+下面的例子使用`Executors.newVirtualThreadPerTaskExecutor()`创建`ExecutorService`。当`ExecutorService.submit(Runnable)`被调用，就会创建一个虚拟线程去执行任务。这个方法返回`Future`的一个实例。`Future.get()`会等待直到线程任务完成。所以，这个例子会打印一条信息当线程任务完成后。
+
+```java
+try (ExecutorService myExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+    Future<?> future = myExecutor.submit(() -> System.out.println("Running thread"));
+    future.get();
+    System.out.println("Task completed");
+    // ...
+```
+
+### 多线程客户端服务器例子
 
 未完待续...
 

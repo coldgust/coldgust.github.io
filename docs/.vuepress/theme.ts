@@ -42,6 +42,10 @@ export default hopeTheme({
   plugins: {
     blog: true,
 
+    readingTime: {
+      wordPerMinute: 150,
+    },
+
     comment: {
       // You should generate and use your own comment service
       provider: "Giscus",
