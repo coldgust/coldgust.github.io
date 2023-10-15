@@ -231,7 +231,7 @@ JDK Flight Recorder (JFR)可以发出这些与虚拟线程相关的事件:
 jfr print --events jdk.VirtualThreadStart,jdk.VirtualThreadEnd,jdk.VirtualThreadPinned,jdk.VirtualThreadSubmitFailed recording.jfr
 ```
 
-### 使用`jcmd`dump虚拟线程
+### 使用`jcmd` dump虚拟线程
 
 你可以创建thread dump的文本格式或者json格式：
 
@@ -248,14 +248,219 @@ jcmd thread dump列出在网络IO阻塞和由`ExecutorService`接口创建的虚
 
 虚拟线程由Java Runtime实现而不是操作系统。虚拟线程和传统线程(我们称之为平台线程)之间的主要区别在于，我们可以很容易地在同一个Java进程中运行大量活动的虚拟线程，甚至数百万个。大量的虚拟线程赋予了它们强大的功能:通过允许服务器并发处理更多的请求，它们可以更有效地运行以每个请求一个线程的方式编写的服务器应用程序，从而实现更高的吞吐量和更少的硬件浪费。
 
-由于虚拟线程是`java.lang.thread`的实现，并且遵循自Java SE 1.0以来指定`java.lang.threa`d的相同规则，因此开发人员不需要学习使用它们的新概念。由于无法生成非常多的平台线程，因此产生了应对创建平台线程的高成本的实践。当把这些实践应用到虚拟线程时会适得其反。此外，由于创建平台线程和虚拟线程的成本存在巨大的差异，我们需要一些新的方法。
+由于虚拟线程是`java.lang.thread`的实现，并且遵循自Java SE 1.0以来指定`java.lang.thread`的相同规则，因此开发人员不需要学习使用它们的新概念。由于无法生成非常多的平台线程，因此产生了应对创建平台线程的高成本的实践。当把这些实践应用到虚拟线程时会适得其反。此外，由于创建平台线程和虚拟线程的成本存在巨大的差异，我们需要一些新的方法。
 
 该指南并不打算全面介绍虚拟线程的每一个重要细节。它只是为了提供一组介绍性的指导方针，以帮助那些希望开始使用虚拟线程的人充分利用它们。
 
 ### 使用一个请求一个线程的风格编写简单、同步的阻塞IO代码
 
-未完待续...
+虚拟线程可以显著提高以每个请求一个线程的方式编写的服务器的吞吐量(而不是延迟)。在这种风格中，服务器至少使用一个线程来处理每个传入请求，因为在处理单个请求时，您可能希望使用更多线程来并发地执行一些任务。
+
+阻塞平台线程的代价很高，因为它占用了系统线程（相对稀缺的资源），而没有做多少有意义的工作。而虚拟线程可以创建很多，其创建成本很低，所以阻塞它们的成本也很低。因此，应该以同步阻塞IO的风格去写代码。
+
+下面的代码使用了非阻塞异步的编码风格，将不会受益于虚拟线程。
+
+```java
+CompletableFuture.supplyAsync(info::getUrl, pool)
+   .thenCompose(url -> getBodyAsync(url, HttpResponse.BodyHandlers.ofString()))
+   .thenApply(info::findImage)
+   .thenCompose(url -> getBodyAsync(url, HttpResponse.BodyHandlers.ofByteArray()))
+   .thenApply(info::setImageData)
+   .thenAccept(this::process)
+   .exceptionally(t -> { t.printStackTrace(); return null; });
+```
+
+另外，下面的代码使用同步阻塞风格，将会受益于虚拟线程。
+
+```java
+try {
+   String page = getBody(info.getUrl(), HttpResponse.BodyHandlers.ofString());
+   String imageUrl = info.findImage(page);
+   byte[] data = getBody(imageUrl, HttpResponse.BodyHandlers.ofByteArray());   
+   info.setImageData(data);
+   process(info);
+} catch (Exception ex) {
+   t.printStackTrace();
+}
+```
+
+这样的代码也更容易调试，分析或者在thread-dumps里观察。要观察虚拟线程，请使用`jcmd`命令创建thread dump：
+
+```shell
+jcmd <pid> Thread.dump_to_file -format=json <file>
+```
+
+以这种风格编写的stack越多，虚拟线程的性能和可观察性就越好。用其他风格编写的程序或框架，如果没有为每个任务指定一个线程，就不应该期望从虚拟线程中获得显著的好处。避免将同步、阻塞代码与异步框架混在一起。
+
+### 每个并发任务使用一个虚拟线程：不要使用虚拟线程池
+
+虚拟线程虽然它们具有与平台线程相同的行为，但它们不应该表示相同的程序概念。
+
+平台线程是稀缺的，因此是一种宝贵的资源。稀缺的资源需要被管理，管理平台线程的最常用方法是使用线程池。接下来需要回答的问题是，池中应该有多少线程?
+
+但是虚拟线程可以创建非常多，因此每个线程不应该代表一些共享的、池化的资源，而应该代表一个任务。线程从被管理的资源转变为对象。我们应该有多少个虚拟线程的问题变得很明显，就像我们应该使用多少个字符串存储用户名的问题一样，虚拟线程的数量总是等于应用程序中并发任务的数量。
+
+将n个平台线程转换为n个虚拟线程不会产生什么好处，相反，需要转换的是任务。
+
+为了将每个应用程序任务表示为一个线程，不要像下面的例子那样使用共享线程池:
+
+```java
+Future<ResultA> f1 = sharedThreadPoolExecutor.submit(task1);
+Future<ResultB> f2 = sharedThreadPoolExecutor.submit(task2);
+// ... use futures
+```
+
+相反，应该使用虚拟线程Executor：
+
+```java
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        Future<ResultA> f1 = executor.submit(task1);
+        Future<ResultB> f2 = executor.submit(task2);
+        // ... use futures
+        }
+```
+
+代码仍然使用`ExecutorService`，但是从`Executors.newVirtualThreadPerTaskExecutor()`返回的对象没有使用线程池。相反，它为每个提交的任务创建一个新的虚拟线程。
+
+此外，`ExecutorService`本身是轻量级的，我们可以创建一个新的，就像处理任何简单的对象一样。这允许我们依赖于新添加的`ExecutorService.close()`方法和`try-with-resources`。在try块结束时隐式调用的close方法将自动等待提交给`Executorservice`的所有任务(即由`Executorservice`生成的所有虚拟线程)终止。
+
+对于fanout场景，这是一个特别有用的模式，在这种场景中，您希望并发地向不同的服务执行多个请求调用，如下面的示例所示:
+
+```java
+void handle(Request request, Response response) {
+    var url1 = ...
+    var url2 = ...
+ 
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        var future1 = executor.submit(() -> fetchURL(url1));
+        var future2 = executor.submit(() -> fetchURL(url2));
+        response.send(future1.get() + future2.get());
+    } catch (ExecutionException | InterruptedException e) {
+        response.fail(e);
+    }
+}
+ 
+String fetchURL(URL url) throws IOException {
+    try (var in = url.openStream()) {
+        return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    }
+}
+```
+
+您应该创建一个新的虚拟线程，如上所示，即使是小型的、短暂的并发任务也是如此。
+
+为了在编写fanout模式和其他常见并发模式时获得更多帮助，并且具有更好的可观察性，请使用结构化并发。
+
+根据经验，如果您的应用程序从来没有10,000个或更多的虚拟线程，那么它不太可能从虚拟线程中获益。要么它的负载太轻，不需要更好的吞吐量，要么您没有向虚拟线程添加足够多的任务。
+
+### 使用`Semaphores`限制并发量
+
+有时需要限制某个操作的并发性。例如，某些外部服务可能无法处理十个以上的并发请求。由于平台线程是通常是在线程池中使用，因此线程池已经变得如此普遍，以至于它们被用于限制并发性的目的，如下例所示:
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(10);
+...
+Result foo() {
+    try {
+        var fut = es.submit(() -> callLimitedService());
+        return f.get();
+    } catch (...) { ... }
+}
+```
+
+这个例子确保最多只有10个线程并发请求。
+
+但是限制并发性只是线程池操作的副作用。池被设计为共享稀缺资源，而虚拟线程并不稀缺，因此永远不应该被池化!
+
+在使用虚拟线程时，如果希望限制访问某些服务的并发性，则应该使用专门为此目的设计的构造`Semaphore`类。下面的例子演示了这个类:
+
+```java
+Semaphore sem = new Semaphore(10);
+...
+Result foo() {
+    sem.acquire();
+    try {
+        return callLimitedService();
+    } finally {
+        sem.release();
+    }
+}
+```
+
+在同一时间内只有10个线程可以执行foo，其它线程将不受阻碍地继续它们的任务。
+
+简单地用信号量阻塞一些虚拟线程似乎与将任务提交到固定线程池有很大的不同，但事实并非如此。提交到线程池的任务会被排队在稍后执行，而`Semaphore`（或者其它同步阻塞的构造）创建一个阻塞的线程队列，该队列对应于线程池的任务队列，因为虚拟线程是任务，所以它们在结构上是等价的。
+
+![Description of "Figure 14-1 Comparing a Thread Pool with a Semaphore"](images/img.png)
+
+即使你可以认为平台线程池是worker线程从任务队列里获取任务并处理，虚拟线程本身是任务，它们阻塞直到可以继续执行。它们在计算机的底层表示是相同的。认识到任务队列和阻塞线程之间的等价性将帮助您充分利用虚拟线程。
+
+数据库连接池本身用作信号量。限制为10个连接的连接池将阻止第11个试图获取连接的线程。不需要在连接池之上添加额外的信号量。
+
+### 不要在线程变量里缓存昂贵的可重用对象
+
+虚拟线程支持线程局部变量，就像平台线程一样。有关更多信息，请参阅[Thread-Local Variables](https://docs.oracle.com/en/java/javase/21/core/thread-local-variables.html#GUID-2CEB9041-3DF7-43DA-868F-E0596F4B63FD)。通常，线程局部变量用于将一些特定于上下文的信息与当前运行的代码相关联，例如当前事务和用户ID。对于虚拟线程，使用线程局部变量是完全合理的。但是，请考虑使用更安全、更有效的范围值。有关更多信息，请参阅[Scoped Values](https://docs.oracle.com/en/java/javase/21/core/scoped-values.html#GUID-9A4565C5-82AE-4F03-A476-3EAA9CDEB0F6)。
+
+线程局部变量的另一种用法在虚拟线程上不可用:缓存可重用对象。这些对象的创建成本通常很高(并消耗大量内存)，它们是可变的，而且不是线程安全的。它们缓存在线程局部变量中，以减少实例化的次数和内存中的实例数量，但是它们被在不同时间运行在线程上的多个任务重用。
+
+例如，`SimpleDateFormat`的实例创建成本很高，并且不是线程安全的。出现的一种模式是在ThreadLocal中缓存这样的实例，如下例所示:
+
+```java
+static final ThreadLocal<SimpleDateFormat> cachedFormatter = 
+       ThreadLocal.withInitial(SimpleDateFormat::new);
+
+void foo() {
+  ...
+	cachedFormatter.get().format(...);
+	...
+}
+```
+
+只有当多个任务共享并重用线程(缓存在线程本地的是昂贵对象)时，这种缓存才有用，就像平台线程被池化时一样。在线程池中运行时，许多任务可能会调用`foo`，但由于线程池只包含几个线程，因此对象只会被实例化几次，然后缓存并重用。
+
+但是，虚拟线程永远不会被池化，也不会被不相关的任务重用。因为每个任务都有自己的虚拟线程，所以每次从不同的任务调用`foo`都会触发一个新的`SimpleDateFormat`的实例化。此外，由于可能有大量的虚拟线程并发地运行，昂贵的对象可能会消耗相当多的内存。这些结果与线程局部缓存想要实现的目标完全相反。
+
+没有一个通用的方案可以代替，但是对于`SimpleDateFormat`，您应该用`DateTimeFormatter`替换它。`DateTimeFormatter`是不可变的，所以一个实例可以被所有线程共享。
+
+```java
+static final DateTimeFormatter formatter = DateTimeFormatter….;
+
+void foo() {
+  ...
+	formatter.format(...);
+	...
+}
+```
+
+请注意，使用线程局部变量来缓存昂贵的共享对象有时是由异步框架在幕后完成的，在它们隐含的假设下，它们被非常少量的池化线程使用。这就是为什么混合虚拟线程和异步框架不是一个好主意的原因之一:对方法的调用可能会导致在线程局部变量中实例化昂贵的对象，这些对象本来打算被缓存和共享。
+
+### 避免长时间和频繁的Pinning
+
+当前虚拟线程实现的一个限制是，在`synchronized`代码块或方法内部执行阻塞操作会导致JDK的虚拟线程调度器阻塞宝贵的操作系统线程，而如果阻塞操作在`synchronized`代码块或方法之外完成，则不会。我们称这种情况为“Pinning”。如果阻塞操作既长又频繁，那么Pinning可能会对服务器的吞吐量产生不利影响。短时间的保护操作，比如保护的代码块只在内存操作，或者使用`synchronized`代码块或方法的不频繁操作，应该不会产生不利影响。
+
+为了检测可能有害的Pinning实例，JDK Flight Recorder (JFR)会发出`jdk.VirtualThreadPinned`时间当阻塞操作被Pinning。缺省情况下启用该事件，超时时间为20ms。
+
+另外，你可以使用system property `jdk.tracePinnedThreads`在线程被阻塞和Pinning时发出调用栈。运行参数`-Djdk.tracePinnedThreads=full`打印完成的调用栈当线程阻塞和Pinning时，并且高亮显示`native frames`和其持有的`monitors`。运行参数`-Djdk.tracePinnedThreads=short`将输出限制为有问题的帧。
+
+如果这些机制检测到固定存在时间较长且频繁的地方，那么在这些特定的地方用`ReentrantLock`替换`synchronized`的使用(不需要在`synchronized`保护时间较短或不频繁的操作的地方替换`synchronized`)。下面是一个长时间且频繁使用同步块的例子。
+
+```java
+synchronized(lockObj) {
+    frequentIO();
+}
+```
+
+你可以替换为以下代码：
+
+```java
+lock.lock();
+try {
+    frequentIO();
+} finally {
+    lock.unlock();
+}
+```
 
 ## Reference
 
-1. [Virtual Threads](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html)
+1. 翻译自：[Virtual Threads](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html)
