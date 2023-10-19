@@ -4,6 +4,7 @@ category:
 tag:
   - 虚拟线程
 date: 2023-10-07
+star: true
 ---
 
 # Java 虚拟线程（virtual thread）

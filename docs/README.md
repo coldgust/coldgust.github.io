@@ -5,7 +5,7 @@ icon: home
 title: 博客主页
 hero: true
 heroText: coldgust的博客
-heroFullScreen: true
+heroFullScreen: false
 #bgImage: false
 bgImageStyle: {
   background-color: "black",
