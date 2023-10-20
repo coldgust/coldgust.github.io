@@ -96,7 +96,7 @@ docker cp ./some_file CONTAINER:/work
 
 在`k8s`里把`docker`改为`kubectl`即可。
 
-## 删除<none>镜像
+## 删除`<none>`镜像
 
 ```shell
 docker image prune -f
