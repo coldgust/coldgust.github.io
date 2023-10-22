@@ -82,7 +82,7 @@ public class LeakyBucket {
     
     public synchronized boolean tryAcquire() {
         long currentTime = System.currentTimeMillis();
-        water = Math.max(0, water - (now - lastTime) * rate);
+        water = Math.max(0, water - (currentTime - lastTime) * rate);
         lastTime = currentTime;
         if (water + 1 <= capacity) {
             ++water;
@@ -128,7 +128,7 @@ public class TokenBucket {
     
     public synchronized boolean tryAcquire() {
         long currentTime = System.currentTimeMillis();
-        tokens = Math.min(capacity, tokens + (now - lastTime) * rate);
+        tokens = Math.min(capacity, tokens + (currentTime - lastTime) * rate);
         lastTime = currentTime;
         if (tokens > 0) {
             --tokens;
