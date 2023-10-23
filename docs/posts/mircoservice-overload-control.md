@@ -59,6 +59,10 @@ star: true
 
 把请求比作水，漏桶算法以固定的速度出水，未来得及流出的水就待在桶里，桶满水时，水就会溢出。本质上是固定QPS阈值，拒绝策略为排队的限流算法。
 
+![Leaky Bucket](images/leaky-bucket.png)
+
+生产级的实现可以参考`nginx`和`sentinel`。
+
 ```java
 /**
  * 漏桶算法的简单实现
@@ -66,7 +70,7 @@ star: true
 public class LeakyBucket {
     // 桶的容量
     private long capacity;
-    // 水流出的速度
+    // 水流出的速度（请求数每毫秒）
     private long rate;
     // 当前积水量
     private long water;
@@ -93,6 +97,133 @@ public class LeakyBucket {
 }
 ```
 
+这里的示例没有实现排队的逻辑，实现的方式有很多种，例如使用`BlockingQueue`，专门的消息队列中间件等等，还有就是可以使用`Thread.sleep()`，计算出排队的时间后`sleep`模拟排队。
+
+```java
+/**
+ * 带有排队的漏桶算法的简单实现
+ */
+public class LeakyBucket {
+    // 桶的容量
+    private long capacity;
+    // 水流出的速度（请求数每毫秒）
+    private long rate;
+    // 当前积水量
+    private long water;
+    // 上次加水的时间
+    private long lastTime;
+
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public LeakyBucket(long capacity, long rate) {
+        if (capacity < rate) {
+            throw new IllegalArgumentException();
+        }
+        this.capacity = capacity;
+        this.rate = rate;
+        this.water = 0;
+        this.lastTime = System.currentTimeMillis();
+    }
+
+    public boolean tryAcquire() throws InterruptedException {
+        lock.lock();
+        try {
+            long currentTime = System.currentTimeMillis();
+            water = Math.max(0, water - (currentTime - lastTime) * rate);
+            lastTime = currentTime;
+            if (water + 1 <= rate) {
+                ++water;
+                lock.unlock();
+                return true;
+            }
+            if (water + 1 <= capacity) {
+                ++water;
+                long interval = water / rate;
+                lock.unlock();
+                sleep(interval);
+                return true;
+            }
+            lock.unlock();
+            return false;
+        } catch (Throwable e) {
+            lock.unlock();
+            throw e;
+        }
+    }
+
+    protected void sleep(long interval) throws InterruptedException {
+        if (interval > 0) {
+            Thread.sleep(interval);
+        }
+    }
+    
+}
+```
+
+使用以下代码测试：
+
+```java
+/**
+ * 该测试需要在JDK21及以上版本运行
+ */
+public class LeakyBucketTest {
+    public static void main(String[] args) throws InterruptedException {
+        LeakyBucket leakyBucket = new LeakyBucket(50, 10);
+        AtomicInteger pass = new AtomicInteger(0);
+        AtomicInteger fail = new AtomicInteger(0);
+        AtomicLong time = new AtomicLong(System.currentTimeMillis());
+        AtomicInteger count = new AtomicInteger(0);
+        int round = 10000;
+        int reqPerRound = 50;
+        try (ExecutorService es = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i < round; ++i) {
+                for (int j = 0; j < reqPerRound; ++j) {
+                    es.submit(() -> {
+                        try {
+                            if (leakyBucket.tryAcquire()) {
+                                pass.incrementAndGet();
+                            } else {
+                                fail.incrementAndGet();
+                            }
+                            long old = time.get();
+                            long now = System.currentTimeMillis();
+                            if (now - old >= 1000 && time.compareAndSet(old, now)) {
+                                int c = count.incrementAndGet();
+                                System.out.println(c + ": pass: " + pass.get() + " fail: " + fail.get());
+                            }
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                }
+                Thread.sleep(1);
+            }
+        }
+        System.out.println(count.incrementAndGet() + ": pass: " + pass.get() + " fail: " + fail.get());
+    }
+}
+```
+
+测试结果：
+
+```text
+1: pass: 9949 fail: 28816
+2: pass: 19959 fail: 57360
+3: pass: 29951 fail: 85810
+4: pass: 39950 fail: 114960
+5: pass: 49949 fail: 144510
+6: pass: 59949 fail: 173961
+7: pass: 69949 fail: 202863
+8: pass: 79945 fail: 231724
+9: pass: 89942 fail: 260120
+10: pass: 99939 fail: 288773
+11: pass: 109878 fail: 317192
+12: pass: 119879 fail: 346683
+13: pass: 128470 fail: 371530
+```
+
+事实上，也可在滑动窗口算法统计QPS的基础上实现漏桶算法，漏桶算法本质上是固定QPS阈值+排队。
+
 ### 令牌桶算法
 
 令牌桶算法以固定的速率生成令牌，请求从桶里拿令牌，拿到令牌的请求通过，拿不到令牌的请求拒绝。拿令牌的速度是没有限制，所以在短时间内的速率可以比较高。
@@ -104,6 +235,8 @@ public class LeakyBucket {
 之所以说漏桶更适合高并发，是因为它优先缓存请求，直到缓存不下才丢弃。而令牌桶一般而言对拿不到令牌的请求是直接丢弃。在高并发例如抢购这种场景下，优先缓存请求更合理。
 
 `Google Guava`里的`RateLimter`就是令牌桶算法的一个实现。
+
+![Token Bucket](images/token-bucket.png)
 
 ```java
 /**
@@ -139,7 +272,15 @@ public class TokenBucket {
 }
 ```
 
+这里的实现比较简单，生产级的实现可以参考`Google Guava`的`RateLimiter`。
+
 ### 滑动窗口算法
+ 
+滑动窗口原理不复杂，将一个时间窗口分为若干个格子，以格子为单位移动窗口。主要是减少了固定时间窗口算法的临界突变问题。
+
+滑动窗口是用得比较多的限流算法，原因是限流器往往是基于统计实现的，如前面提到的，要实现自适应算法，需要统计一些指标。使用滑动窗口算法可以容易实现。生产级的实现可以参考`Sentinel`。
+
+![sliding window.png](images/sliding-window.png)
 
 ```java
 /**
@@ -177,4 +318,154 @@ public class SlidingWindow {
 }
 ```
 
-未完待续...
+上面的实现比较简单，没有引入时间，引入时间之后会复杂一点。
+
+```java
+/**
+ * 带有时间实现的滑动窗口算法的简单实现
+ */
+public class SlidingWindow {
+    static class WindowItem {
+        int value;
+        long startTime;
+    }
+    
+    // 窗口内的取样数（也就是把窗口分为多少个格子）
+    private int sampleCount;
+    // 窗口的时间长度（毫秒）
+    private int windowTimeLen;
+    // 窗口内的每个格子的时间长度（毫秒）
+    private int windowItemTimeLen;
+    // 阈值
+    private int limit;
+    // 窗口内请求数量
+    private WindowItem[] window;
+
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public SlidingWindow(int sampleCount, int windowTimeLen, int limit) {
+        this.sampleCount = sampleCount;
+        this.windowTimeLen = windowTimeLen;
+        this.windowItemTimeLen = windowTimeLen / sampleCount;
+        this.limit = limit;
+        this.window = new WindowItem[sampleCount];
+    }
+
+    public boolean tryAcquire() {
+        lock.lock();
+        try {
+            int sum = 0;
+            for (int i = 0; i < sampleCount; ++i) {
+                if (window[i] != null && isValidItem(window[i])) {
+                    sum += window[i].value;
+                }
+            }
+            if (sum < limit) {
+                WindowItem item = currentItem();
+                ++item.value;
+                return true;
+            }
+            return false;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    WindowItem currentItem() {
+        long now = System.currentTimeMillis();
+        int index = (int) ((now / windowItemTimeLen) % sampleCount);
+        long itemStartTime = now - now % windowItemTimeLen;
+
+        WindowItem old = window[index];
+        if (old == null || old.startTime != itemStartTime) {
+            WindowItem item = new WindowItem();
+            item.startTime = itemStartTime;
+            window[index] = item;
+            return item;
+        }
+
+        return old;
+    }
+    
+    boolean isValidItem(WindowItem item) {
+        long now = System.currentTimeMillis();
+        return item.startTime + windowTimeLen >= now;
+    }
+}
+```
+
+测试代码：
+
+```java
+/**
+ * 该代码需要在JDK21及以上版本运行
+ */
+public class SlidingWindowTest {
+    public static void main(String[] args) throws InterruptedException {
+        SlidingWindow slidingWindow = new SlidingWindow(10, 1000, 10000);
+        AtomicInteger pass = new AtomicInteger(0);
+        AtomicInteger fail = new AtomicInteger(0);
+        AtomicLong time = new AtomicLong(System.currentTimeMillis());
+        AtomicInteger count = new AtomicInteger(0);
+        int round = 10000;
+        int reqPerRound = 50;
+        try (ExecutorService es = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i < round; ++i) {
+                for (int j = 0; j < reqPerRound; ++j) {
+                    es.submit(() -> {
+                        if (slidingWindow.tryAcquire()) {
+                            pass.incrementAndGet();
+                        } else {
+                            fail.incrementAndGet();
+                        }
+                        long old = time.get();
+                        long now = System.currentTimeMillis();
+                        if (now - old >= 1000 && time.compareAndSet(old, now)) {
+                            int c = count.incrementAndGet();
+                            System.out.println(c + ": pass: " + pass.get() + " fail: " + fail.get());
+                        }
+                    });
+                }
+                Thread.sleep(1);
+            }
+        }
+        System.out.println(count.incrementAndGet() + ": pass: " + pass.get() + " fail: " + fail.get());
+    }
+}
+```
+
+测试结果：
+
+```text
+1: pass: 10550 fail: 27909
+2: pass: 20550 fail: 56557
+3: pass: 30550 fail: 85010
+4: pass: 40550 fail: 113851
+5: pass: 50550 fail: 142651
+6: pass: 60550 fail: 171401
+7: pass: 70550 fail: 200052
+8: pass: 80550 fail: 228874
+9: pass: 90550 fail: 257851
+10: pass: 100550 fail: 286552
+11: pass: 110550 fail: 315751
+12: pass: 120550 fail: 344402
+13: pass: 130000 fail: 370000
+```
+
+## 自适应算法简介
+
+自适应算法又称动态限流算法。其核心解决的问题是，限流的阈值不容易配置一个好的值。过高的阈值限流会失效，过低则造成机器性能浪费。自适应算法的目的是不用手动配置限流阈值，而是算法根据统计指标，如系统平均复杂（Load），平均响应时间，并发线程数，QPS等等，决定当前是否实施限流。
+
+自适应算法的好处是显然易见的，在理想情况下能让系统尽可能跑在最大吞吐量的同时保证系统的稳定性。而缺点是带来一定的性能损失，同时现在流行的一些自适应算法，效果不一定理想。
+
+自适应算法的实现可以参考[Sentinel](https://sentinelguard.io/zh-cn/docs/system-adaptive-protection.html)和[Apache bRPC](https://brpc.apache.org/zh/docs/server/auto-concurrencylimiter/)的实现。
+
+## 微服务系统中的流量控制
+
+在微服务系统中，可以给每个服务都配置一个自适应算法限流。在业务网关处配置集群流控，控制每个用户、IP等等的QPS。 在业务接口配置熔断降级策略，避免服务整体雪崩。
+
+## 流量控制器的设计
+
+流量控制器一般是使用责任链设计模式，基于滑动窗口法的指标统计实现。责任链模式非常适合流量控制器，可以方便添加各个处理器。滑动窗口则非常适合用来收集指标，可以参考Sentinel的实现。
+
+当然也可以通过指数平滑法（[EMA](https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average)）统计数据，可以参考Apache bRPC实现。

@@ -392,7 +392,7 @@ Result foo() {
 
 简单地用信号量阻塞一些虚拟线程似乎与将任务提交到固定线程池有很大的不同，但事实并非如此。提交到线程池的任务会被排队在稍后执行，而`Semaphore`（或者其它同步阻塞的构造）创建一个阻塞的线程队列，该队列对应于线程池的任务队列，因为虚拟线程是任务，所以它们在结构上是等价的。
 
-![Description of "Figure 14-1 Comparing a Thread Pool with a Semaphore"](images/img.png)
+![Description of "Figure 14-1 Comparing a Thread Pool with a Semaphore"](images/threadpool-vs-semaphore.png)
 
 即使你可以认为平台线程池是worker线程从任务队列里获取任务并处理，虚拟线程本身是任务，它们阻塞直到可以继续执行。它们在计算机的底层表示是相同的。认识到任务队列和阻塞线程之间的等价性将帮助您充分利用虚拟线程。
 
