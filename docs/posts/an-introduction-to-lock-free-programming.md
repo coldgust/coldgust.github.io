@@ -123,7 +123,27 @@ void thread2()
 
 ## 内存顺序
 
-未完待续...
+正如流程图所示，每当您为多核(或任何对称多处理器)进行无锁编程时，如果您的环境不能保证顺序一致性，则必须考虑如何防止内存重新排序。
+
+在今天的体系结构中，强制执行正确内存排序的工具通常分为三类，它们既可以防止编译器重排序，也可以防止处理器重排序：
+
+- 轻量级的同步或屏障指令，[将在未来讨论](http://preshing.com/20120913/acquire-and-release-semantics)。（acquire和release语义）。
+- 完整的内存屏障指令，[在这里已经讨论](http://preshing.com/20120522/lightweight-in-memory-logging)。（`LoadLoad`，`StoreStore`，`LoadStore`，`StoreLoad`，可参考[Memory Barriers Are Like Source Control Operations](https://preshing.com/20120710/memory-barriers-are-like-source-control-operations/)）。
+- 提供acquire或release语义的内存操作。
+
+acquire语义阻止后面的内存操作重排序，release语义阻止前面的内存操作重排序。这些语义特别适用于存在生产者/消费者关系的情况，其中一个线程发布一些信息，另一个线程读取它。我还将在[以后的帖子](http://preshing.com/20120913/acquire-and-release-semantics)中详细讨论这一点。
+
+![acquire](images/acquire-semantic.png)
+
+![release](images/release-semantic.png)
+
+## 不同的处理器有不同的内存模型
+
+当涉及到内存重新排序时，[不同的CPU系列有不同的规则](http://www.linuxjournal.com/node/8212/print)。这些规则由每个CPU供应商编写，硬件严格遵循这些规则。例如，PowerPC和ARM处理器可以改变相对于指令本身的内存存储顺序，但通常情况下，Intel和AMD的x86/64处理器系列不会这样做。我们说以前的处理器有一个更[宽松的内存模型](http://preshing.com/20120930/weak-vs-strong-memory-models)。
+
+为了把这些特定于平台的细节抽象出来，C++11提供了一种编写可移植无锁代码的标准方法。但目前，我认为大多数无锁程序员至少对平台差异有一些了解。如果要记住一个关键的区别，那就是在x86/64指令集上，每次从内存加载都带有acquire语义，而每次向内存写入都提供release语义，至少对于非sse指令和非写组合内存是如此。因此，过去编写在x86/64上运行但在其他处理器上失败的无锁代码是很常见的。
+
+如果你对处理器如何以及为什么执行内存重排序的硬件细节感兴趣，我推荐《[Is Parallel Programming Hard](http://kernel.org/pub/linux/kernel/people/paulmck/perfbook/perfbook.2011.01.02a.pdf)》的附录C。在任何情况下，请记住，由于编译器对指令进行重排序，也可能发生内存重排序。
 
 ## 附加参考资料
 
