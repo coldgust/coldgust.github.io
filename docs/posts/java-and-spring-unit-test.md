@@ -242,8 +242,8 @@ public class UserServiceSpyTest {
 
     @Test
     void shouldReturnCorrectUser() {
-        when(userDao.getUserNameById(anyString()))
-                .thenAnswer(invocationOnMock -> "mockUser: " + invocationOnMock.getArgument(0));
+        doAnswer(invocationOnMock -> "mockUser: " + invocationOnMock.getArgument(0))
+                .when(userDao).getUserNameById(anyString());
         User user = userService.getUserById("1");
         Assertions.assertEquals(new User("1", "mockUser: 1"), user);
         Assertions.assertEquals(user.getName().length(), userDao.getAgeByName(user.getName()));
@@ -414,13 +414,13 @@ public class UserServiceMoodTest {
 
     @Test
     void shouldHappyWhenEven() {
-        Mockito.when(userService.getCurrentTimeMillis()).thenReturn(2L);
+        Mockito.doReturn(2L).when(userService).getCurrentTimeMillis();
         IntStream.range(0, 100).forEach(i -> Assertions.assertEquals("happy", userService.getUserMood()));
     }
 
     @Test
     void shouldSadWhenOdd() {
-        Mockito.when(userService.getCurrentTimeMillis()).thenReturn(1L);
+        Mockito.doReturn(1L).when(userService).getCurrentTimeMillis();
         IntStream.range(0, 100).forEach(i -> Assertions.assertEquals("sad", userService.getUserMood()));
     }
 }
@@ -516,8 +516,8 @@ public class UserControllerTest {
 
     @Test
     public void shouldReturnCorrectUser() throws Exception {
-        when(userDao.getUserNameById(anyString()))
-                .thenAnswer(invocationOnMock -> "mockUser: " + invocationOnMock.getArgument(0));
+        doAnswer(invocationOnMock -> "mockUser: " + invocationOnMock.getArgument(0))
+                .when(userDao).getUserNameById(anyString());
         ObjectMapper om = new ObjectMapper();
         mockMvc.perform(MockMvcRequestBuilders.get("/user/10"))
                 .andDo(MockMvcResultHandlers.print())
