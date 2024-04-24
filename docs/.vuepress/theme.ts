@@ -46,6 +46,10 @@ export default hopeTheme({
       wordPerMinute: 150,
     },
 
+    components: {
+      components: ["Badge", "VPCard"],
+    },
+
     comment: {
       // You should generate and use your own comment service
       provider: "Giscus",
@@ -55,28 +59,18 @@ export default hopeTheme({
       categoryId: "DIC_kwDOJ_MAe84CYGT6"
     },
 
-    // all features are enabled for demo, only preserve features you need here
+    // 此处开启了很多功能用于演示，你应仅保留用到的功能。
     mdEnhance: {
       align: true,
       attrs: true,
-      chart: true,
       codetabs: true,
+      component: true,
       demo: true,
-      echarts: true,
       figure: true,
-      gfm: true,
       imgLazyload: true,
       imgSize: true,
       include: true,
-      katex: true,
       mark: true,
-      mermaid: true,
-      playground: {
-        presets: ["ts", "vue"],
-      },
-      revealjs: {
-        plugins: ["highlight", "math", "search", "notes", "zoom"],
-      },
       stylize: [
         {
           matcher: "Recommended",
@@ -93,8 +87,46 @@ export default hopeTheme({
       sub: true,
       sup: true,
       tabs: true,
+      tasklist: true,
       vPre: true,
-      vuePlayground: true,
+
+      // 在启用之前安装 chart.js
+      // chart: true,
+
+      // insert component easily
+
+      // 在启用之前安装 echarts
+      // echarts: true,
+
+      // 在启用之前安装 flowchart.ts
+      // flowchart: true,
+
+      // gfm requires mathjax-full to provide tex support
+      // gfm: true,
+
+      // 在启用之前安装 katex
+      // katex: true,
+
+      // 在启用之前安装 mathjax-full
+      // mathjax: true,
+
+      // 在启用之前安装 mermaid
+      mermaid: true,
+
+      // playground: {
+      //   presets: ["ts", "vue"],
+      // },
+
+      // 在启用之前安装 reveal.js
+      revealJs: {
+        plugins: ["highlight", "math", "search", "notes", "zoom"],
+      },
+
+      // 在启用之前安装 @vue/repl
+      // vuePlayground: true,
+
+      // install sandpack-vue3 before enabling it
+      // sandpack: true,
     },
 
     // uncomment these if you want a PWA
