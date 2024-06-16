@@ -66,7 +66,7 @@ export default hopeTheme({
       codetabs: true,
       component: true,
       demo: true,
-      figure: true,
+      figure: false,
       imgLazyload: true,
       imgSize: true,
       include: true,
