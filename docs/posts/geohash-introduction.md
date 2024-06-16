@@ -80,3 +80,8 @@ GeoHash编码如果前缀相同越多的地理位置越接近，但反之不成�
 其中最小的经纬度单元格和二进制串的长度有关。`min_lat = (MAX_LAT - MIN_LAT) / (1 << n)`。`MAX_LAT = 90`，`MIN_LAT = -90`，`n`为二进制字符串长度。经度的计算方式类似。
 
 最后，找出这9个格子里的所有用户，再使用距离计算公式计算当前用户与这9个格子里所有用户的距离，找出符合条件的用户。
+
+## 参考资料：
+
+- [GeoHash在线编码](http://geohash.co/)
+- [[redis学习笔记]GeoHash算法详解及其实现](https://luoming1224.github.io/2019/04/04/[redis%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0]GeoHash%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3%E5%8F%8A%E5%85%B6%E5%AE%9E%E7%8E%B0/)
