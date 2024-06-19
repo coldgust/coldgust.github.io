@@ -10,7 +10,7 @@ date: 2024-6-19
 
 # Linux性能相关工具和指标总结
 
-本文收集了Linux相关的性能指标和工具。大部分资料来源于极客时间课程《[Linux性能优化实战](https://time.geekbang.org/column/intro/100020901)》。
+本文收集了Linux相关的性能指标和工具。大部分资料来源于极客时间课程《[Linux性能优化实战](https://time.geekbang.org/column/intro/100020901)》，工具使用资料大部分来源于：[linux-command](https://github.com/jaywcjlove/linux-command)。
 
 ## 总揽
 
@@ -149,7 +149,7 @@ pidstat [ 选项 ] [ <时间间隔> ] [ <次数> ]
 - I：在SMP环境，表示任务的CPU使用率/内核数量
 - l：显示命令名和所有参数
 
-### 查看所有进程的CPU使用情况
+#### 查看所有进程的CPU使用情况
 
 ```shell
 # pidstat -u -p ALL
@@ -177,7 +177,7 @@ pidstat [ 选项 ] [ <时间间隔> ] [ <次数> ]
 - CPU：处理进程的cpu编号
 - Command：当前进程对应的命令
 
-### 查看所有进程的内存使用情况
+#### 查看所有进程的内存使用情况
 
 ```shell
 # pidstat -r
@@ -203,7 +203,7 @@ pidstat [ 选项 ] [ <时间间隔> ] [ <次数> ]
 - RSS：常驻集合大小，非交换区物理内存使用KB
 - Command：task命令名
 
-### 查看所有进程的IO使用情况
+#### 查看所有进程的IO使用情况
 
 ```shell
 # pidstat -d
@@ -229,7 +229,7 @@ pidstat [ 选项 ] [ <时间间隔> ] [ <次数> ]
 - kB_ccwr/s：任务取消的写入磁盘的KB。当任务截断脏的pagecache的时候会发生。
 - COMMAND:task的命令名
 
-### 查看进程的上下文切换情况
+#### 查看进程的上下文切换情况
 
 ```shell
 # pidstat -w
