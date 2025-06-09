@@ -440,6 +440,8 @@ void foo() {
 
 当前虚拟线程实现的一个限制是，在`synchronized`代码块或方法内部执行阻塞操作会导致JDK的虚拟线程调度器阻塞宝贵的操作系统线程，而如果阻塞操作在`synchronized`代码块或方法之外完成，则不会。我们称这种情况为“Pinning”。如果阻塞操作既长又频繁，那么Pinning可能会对服务器的吞吐量产生不利影响。短时间的保护操作，比如保护的代码块只在内存操作，或者使用`synchronized`代码块或方法的不频繁操作，应该不会产生不利影响。
 
+**JDK24中synchronized不再pinning**，参考[JEP 491](https://openjdk.org/jeps/491)。
+
 为了检测可能有害的Pinning实例，JDK Flight Recorder (JFR)会发出`jdk.VirtualThreadPinned`时间当阻塞操作被Pinning。缺省情况下启用该事件，超时时间为20ms。
 
 另外，你可以使用system property `jdk.tracePinnedThreads`在线程被阻塞和Pinning时发出调用栈。运行参数`-Djdk.tracePinnedThreads=full`打印完成的调用栈当线程阻塞和Pinning时，并且高亮显示`native frames`和其持有的`monitors`。运行参数`-Djdk.tracePinnedThreads=short`将输出限制为有问题的帧。
