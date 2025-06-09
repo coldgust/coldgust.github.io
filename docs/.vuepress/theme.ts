@@ -4,6 +4,9 @@ import sidebar from "./sidebar.js";
 
 export default hopeTheme({
   hostname: "https://coldgust.github.io",
+  docsBranch: 'main',
+  docsDir: 'docs',
+  repo: 'coldgust/coldgust.github.io',
 
   author: {
     name: "coldgust",
@@ -12,10 +15,6 @@ export default hopeTheme({
   },
 
   logo: "/logo.svg",
-
-  repo: "coldgust",
-
-  docsDir: "docs",
 
   // navbar
   navbar,
