@@ -3,7 +3,7 @@ category:
   - 空间
 tag:
   - 算法
-date: 2024-6-16
+date: 2024-06-16
 ---
 
 # 地理空间邻近算法：GeoHash

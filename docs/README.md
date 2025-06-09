@@ -1,12 +1,12 @@
 ---
 home: true
-layout: BlogHome
+layout: Blog
 icon: home
 title: 博客主页
 hero: true
-heroText: Absolute Zero
+heroText: Time After Time
 heroFullScreen: true
-tagline: 世间的美好总是不期而遇
+tagline: Step By Step
 bgImage: /assets/images/bg-img.jpg
 #bgImageStyle: {
 #  background-color: "black",
