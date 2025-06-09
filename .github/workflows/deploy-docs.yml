@@ -4,37 +4,43 @@ on:
   push:
     branches:
       - main
+
+permissions:
+  contents: write
+
 jobs:
-  deploy:
+  deploy-gh-pages:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          # choose pnpm version to use
-          version: 10
-          # install deps with pnpm
-          run_install: true
-      - uses: actions/setup-node@v3
+
+      - name: set pnpm
+        uses: pnpm/action-setup@v4
+
+
+      - name: set Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - name: Build
-        run: pnpm run docs:build
-      - uses: actions/configure-pages@v2
-      - uses: actions/upload-pages-artifact@v1
+
+      - name: install deps
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: build docs
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
+        run: |-
+          pnpm run docs:build
+          > src/.vuepress/dist/.nojekyll
+
+      - name: deploy docs
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: docs/.vuepress/dist
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v1
+          branch: gh-pages
+          folder: docs/.vuepress/dist
