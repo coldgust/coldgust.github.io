@@ -27,6 +27,8 @@ export default hopeTheme({
 
   displayFooter: true,
 
+  changelog: false,
+
   blog: {
     description: "一个全栈开发者，喜欢探索未知领域",
     intro: "/intro.html",
@@ -43,7 +45,7 @@ export default hopeTheme({
     codeTabs: true,
     component: true,
     demo: true,
-    figure: true,
+    figure: false,
     gfm: true,
     imgLazyload: true,
     imgSize: true,
@@ -95,7 +97,7 @@ export default hopeTheme({
     // flowchart: true,
 
     // 在启用之前安装 mermaid
-    // mermaid: true,
+    mermaid: true,
 
     // playground: {
     //   presets: ["ts", "vue"],
