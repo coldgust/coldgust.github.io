@@ -133,5 +133,9 @@ export default hopeTheme({
       category: "Announcements",
       categoryId: "DIC_kwDOJ_MAe84CYGT6"
     },
+
+    slimsearch: {
+      indexContent: true,
+    }
   }
 });
