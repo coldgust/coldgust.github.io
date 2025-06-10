@@ -6,7 +6,8 @@ export default hopeTheme({
   hostname: "https://coldgust.github.io",
   docsBranch: 'main',
   docsDir: 'docs',
-  repo: 'coldgust/coldgust.github.io',
+  docsRepo: 'coldgust/coldgust.github.io',
+  repo: 'coldgust',
 
   author: {
     name: "coldgust",
@@ -35,7 +36,7 @@ export default hopeTheme({
 
   // page meta
   metaLocales: {
-    editLink: "在 GitHub 上编辑此页",
+    editLink: "编辑此页",
   },
 
   markdown: {
