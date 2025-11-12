@@ -249,12 +249,9 @@ SELECT * FROM users WHERE name LIKE 'A%' AND age = 25;
     - **system**：表只有一行记录（等于系统表），这是 const 类型的特例，性能极佳。
     - **const**：通过索引一次就找到了，用于比较 主键索引 或 唯一索引 的所有列与常数值比较时。例如
       `SELECT * FROM users WHERE id = 1;`，性能极佳。
-    - **eq_ref**：在连接查询时，使用了 主键 或 唯一非空索引 进行关联。例如 `SELECT * FROM t1, t2 WHERE t1.id = t2.id;`
-      ，性能极佳。
-    - **ref**：使用 普通索引 进行扫描，可能返回多个匹配的行。例如 `SELECT * FROM users WHERE name = 'John';`（name
-      是普通索引），性能良好。
-    - **range**：只检索给定范围的行，使用一个索引来选择行。关键字的范围查询（BETWEEN, <, >, IN 等）。例如
-      `SELECT * FROM users WHERE id > 10;`，性能良好。
+    - **eq_ref**：在连接查询时，使用了 主键 或 唯一非空索引 进行关联。例如 `SELECT * FROM t1, t2 WHERE t1.id = t2.id;`，性能极佳。
+    - **ref**：使用 普通索引 进行扫描，可能返回多个匹配的行。例如 `SELECT * FROM users WHERE name = 'John';`（name是普通索引），性能良好。
+    - **range**：只检索给定范围的行，使用一个索引来选择行。关键字的范围查询（BETWEEN, <, >, IN 等）。例如`SELECT * FROM users WHERE id > 10;`，性能良好。
     - **index**：全索引扫描。遍历整个索引树来查找数据，虽然只扫描索引，但比全表扫描快，因为索引文件通常比数据文件小。
     - **ALL**：全表扫描，没有使用索引。这是最坏的情况，需要检查表结构和查询条件，考虑增加索引，性能极差。
     - 目标：至少要让查询达到 range 级别，最好能达到 ref。
@@ -262,8 +259,8 @@ SELECT * FROM users WHERE name LIKE 'A%' AND age = 25;
 4. **key**
     - possible_keys 列出了可能使用的索引。
     - key 是优化器最终决定使用的索引。如果为 NULL，则表示没有使用索引。
-    - 强制使用索引：`USE INDEX(index_name)`
-    - 强制忽略索引：`IGNORE INDEX(index_name)`
+    - 强制使用索引：`USE INDEX(index_name)`。
+    - 强制忽略索引：`IGNORE INDEX(index_name)`。
 
 5. **rows**
     - MySQL 优化器估算的为了找到所需的行而需要读取的行数。这个值越小越好。它是一个预估值，但能直观地反映查询的成本。
@@ -273,10 +270,8 @@ SELECT * FROM users WHERE name LIKE 'A%' AND age = 25;
     此列包含非常多的重要信息：
     - **Using index**：覆盖索引，表示查询可以通过索引直接获取所有数据，无需回表。性能极佳。
       例如：`SELECT id FROM users WHERE name = ...`，如果 (name, id) 是一个复合索引，则数据可以直接从索引中获取。
-    - **Using where**：表示在存储引擎检索行后，服务器层（Server）还需要进行过滤。这不一定是个坏信号，但如果在 type 是 ALL
-      或 index 时出现，说明查询效率不高。
-    - **Using temporary**：表示 MySQL 需要使用临时表来存储结果集，常见于排序（ORDER BY）和分组查询（GROUP
-      BY），尤其是在没有索引帮助排序/分组时。**需要优化**。
+    - **Using where**：表示在存储引擎检索行后，服务器层（Server）还需要进行过滤。这不一定是个坏信号，但如果在 type 是 ALL 或 index 时出现，说明查询效率不高。
+    - **Using temporary**：表示 MySQL 需要使用临时表来存储结果集，常见于排序（ORDER BY）和分组查询（GROUP BY），尤其是在没有索引帮助排序/分组时。**需要优化**。
     - **Using filesort**：MySQL 无法利用索引完成的排序操作，称为“文件排序”。它会在内存或磁盘上进行排序，效率较低。**需要优化**。
     - **Using join buffer (Block Nested Loop)**：表示连接查询时，被驱动表没有使用索引，需要用到连接缓冲区。**需要优化**。
     - **Impossible WHERE**：`WHERE` 子句的值始终为 `false`，查询不到任何数据。
@@ -332,8 +327,7 @@ EXPLAIN SELECT * FROM users WHERE age + 1 > 20;
 |----|-------------|-------|------|---------------|------|------|-------------|
 | 1  | SIMPLE      | users | ALL  | NULL          | NULL | 1000 | Using where |
 
-分析： 由于在 `age` 上使用了函数 `(age + 1)`，导致索引失效，进行了全表扫描（ALL），扫描了 1000 行。需要优化，可以改写查询为
-`age > 19`。
+分析： 由于在 `age` 上使用了函数 `(age + 1)`，导致索引失效，进行了全表扫描（ALL），扫描了 1000 行。需要优化，可以改写查询为`age > 19`。
 
 #### 场景 3：连接查询与文件排序
 ```sql
@@ -413,19 +407,15 @@ Execution Time: 4.890 ms
     - **格式**：启动代价..总代价
     - **启动代价**：到达该节点输出第一行结果前需要花费的代价。例如，Sort 节点需要先把所有数据排序才能输出第一行，所以启动代价很高。
     - **总代价**：该节点输出所有结果的总代价。
-    - **在 EXPLAIN ANALYZE 中**：cost 后面会跟实际执行的时间信息，如 (cost=10.00..20.00 rows=100 width=0) (actual
-      time=0.100..1.500 rows=99 loops=1)。这里的 actual time 是毫秒为单位的实际时间。
+    - **在 EXPLAIN ANALYZE 中**：cost 后面会跟实际执行的时间信息，如 (cost=10.00..20.00 rows=100 width=0) (actual time=0.100..1.500 rows=99 loops=1)。这里的 actual time 是毫秒为单位的实际时间。
 
 - **rows（预估行数）**
     - **含义**：执行计划节点预估会输出的行数。
-    - **重要性**：这是最关键的指标之一。优化器的预估是否准确，直接决定了它选择的执行计划是否优秀。如果 EXPLAIN ANALYZE 显示
-      rows 的预估值和实际值（rows=99）差异巨大，通常意味着表的统计信息（pg_statistics）过时或不准确，你需要运行
-      `ANALYZE table_name;` 来更新。
+    - **重要性**：这是最关键的指标之一。优化器的预估是否准确，直接决定了它选择的执行计划是否优秀。如果 EXPLAIN ANALYZE 显示 rows 的预估值和实际值（rows=99）差异巨大，通常意味着表的统计信息（pg_statistics）过时或不准确，你需要运行`ANALYZE table_name;` 来更新。
 
 - **width（平均行宽度）**
     - **含义**：该节点输出的每一行数据的平均字节数。
-    - **作用**：帮助你了解中间结果集或最终结果集的数据量大小。如果一个查询只需要几列但 width 很大，说明它可能获取了不必要的宽列（如
-      TEXT 类型）。
+    - **作用**：帮助你了解中间结果集或最终结果集的数据量大小。如果一个查询只需要几列但 width 很大，说明它可能获取了不必要的宽列（如 TEXT 类型）。
 
 - **actual time（实际执行时间）**
     - **含义**：EXPLAIN ANALYZE 独有的指标，表示该节点的实际执行耗时，单位是毫秒。
@@ -433,8 +423,7 @@ Execution Time: 4.890 ms
 
 - **loops（循环次数）**
     - **含义**：该节点被执行的次数。对于顶层的节点，通常是1。但在嵌套循环连接中，内层节点会被执行多次。
-    - **示例**：如果一个 Index Scan 的 loops=100，说明这个索引扫描被执行了100次。计算总耗时时，需要用 actual time 的平均值乘以
-      loops。
+    - **示例**：如果一个 Index Scan 的 loops=100，说明这个索引扫描被执行了100次。计算总耗时时，需要用 actual time 的平均值乘以 loops。
 
 #### 类别二：节点操作类型指标（扫描、连接、聚合等）
 
@@ -456,8 +445,7 @@ Execution Time: 4.890 ms
     - **关键指标**：Heap Fetches（堆读取次数），理想情况下应为0。如果不为0，说明由于表（堆）的可见性映射（VM）问题，还是需要访问表数据。
 
 - **Bitmap Heap Scan & Bitmap Index Scan**
-    - **含义**：先通过 Bitmap Index Scan 在索引中匹配所有条件，将结果的位置（ctid）在内存中构建一个位图。然后 Bitmap Heap
-      Scan 根据这个位图按物理顺序去表中读取数据。这结合了索引的筛选能力和顺序IO的效率。
+    - **含义**：先通过 Bitmap Index Scan 在索引中匹配所有条件，将结果的位置（ctid）在内存中构建一个位图。然后 Bitmap Heap Scan 根据这个位图按物理顺序去表中读取数据。这结合了索引的筛选能力和顺序IO的效率。
     - **适用场景**：多条件查询，且单个条件筛选度不高，组合起来筛选度高时。
 
 ##### B. 连接方式（Join Methods）
