@@ -102,8 +102,6 @@ ALTER TABLE table1 ADD INDEX idx_name (name);
 
 ## 3. using where
 
-## 3. using where
-
 表明查询使用了 `WHERE` 子句进行条件过滤。一般在没有使用到索引的时候会出现。
 
 ## 4. 驱动表优化
