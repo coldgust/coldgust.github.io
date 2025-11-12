@@ -210,8 +210,19 @@ SELECT * FROM users WHERE name LIKE 'A%' AND age = 25;
     - 当进行连接查询时，如果两个表的字符集或排序规则不同，索引可能无法使用。
 
 ## MySQL执行计划
-语法：`EXPLAIN SQL`，`EXPLAIN ANALYZE SQL`，`EXPLAIN FORMAT=JSON SQL`
-`EXPLAIN SELECT * FROM users WHERE name = 'John Doe';`和`EXPLAIN ANALYZE SELECT * FROM users WHERE name = 'John Doe';`
+
+```sql
+-- 基本用法
+EXPLAIN SELECT * FROM users WHERE age > 25;
+
+-- 不同的输出格式
+EXPLAIN FORMAT=TRADITIONAL SELECT * FROM orders;
+EXPLAIN FORMAT=JSON SELECT * FROM products;
+EXPLAIN FORMAT=TREE SELECT * FROM categories;  -- MySQL 8.0+
+
+-- 实际执行查询并显示详细统计信息
+EXPLAIN ANALYZE SELECT * FROM users WHERE age > 25;  -- MySQL 8.0+
+```
 
 ### 结果分析
 
