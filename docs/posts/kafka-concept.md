@@ -152,10 +152,10 @@ flowchart TD
     - **概念**：由一组消费者实例组成的逻辑组，共同消费一个或多个Topic。
     - **核心机制**：**一个Partition在同一时间只能被同一个Consumer Group内的一个Consumer消费**。
     - **作用**：
-    - **实现两种消息模式**：
-        - **队列模式**：所有Consumer在同一个Group内，它们共同分担Topic的消息，每条消息只被组内的一个Consumer处理。
-        - **发布/订阅模式**：每个Consumer在不同的Group内，它们都能收到Topic的全部消息。
-    - **水平扩展消费能力**：通过增加Group内的Consumer实例，可以提高消费的并行度。但注意，Consumer数量不应超过Topic的Partition数量，否则多余的Consumer会闲置。
+        - **实现两种消息模式**：
+            - **队列模式**：所有Consumer在同一个Group内，它们共同分担Topic的消息，每条消息只被组内的一个Consumer处理。
+            - **发布/订阅模式**：每个Consumer在不同的Group内，它们都能收到Topic的全部消息。
+        - **水平扩展消费能力**：通过增加Group内的Consumer实例，可以提高消费的并行度。但注意，Consumer数量不应超过Topic的Partition数量，否则多余的Consumer会闲置。
 
 - **消息交付语义**：
     - **At Most Once**：消息最多被消费一次。消费者先提交Offset，再处理消息。可能会丢失消息。
