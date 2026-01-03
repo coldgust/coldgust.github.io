@@ -5,6 +5,7 @@ category:
 tag:
   - 分布式
 date: 2026-01-03
+star: true
 ---
 
 # Raft 简介
