@@ -125,14 +125,15 @@ export default hopeTheme({
       prefix: "fa6-solid:",
     },
 
-    comment: {
-      // You should generate and use your own comment service
-      provider: "Giscus",
-      repo: "coldgust/giscus-blog-comment",
-      repoId: "R_kgDOJ_MAew",
-      category: "Announcements",
-      categoryId: "DIC_kwDOJ_MAe84CYGT6"
-    },
+    // comment: {
+    //   provider: "Giscus",
+    //   repo: "coldgust/giscus-blog-comment",
+    //   repoId: "R_kgDOJ_MAew",
+    //   category: "Announcements",
+    //   categoryId: "DIC_kwDOJ_MAe84CYGT6"
+    // },
+
+    comment: false,
 
     slimsearch: {
       indexContent: true,
