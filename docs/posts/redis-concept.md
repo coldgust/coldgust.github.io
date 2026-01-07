@@ -950,3 +950,133 @@ sentinel parallel-syncs mymaster 1
 #### 监控告警
 
 - **建议**：必须部署监控系统（Prometheus + Grafana）
+
+## 常用命令
+
+### Scan 命令
+
+SCAN 是 Redis 中用于渐进式遍历键空间的命令，相比于 KEYS 命令（会阻塞服务器并返回所有匹配键），SCAN 更适用于生产环境。
+
+```shell
+SCAN cursor [MATCH pattern] [COUNT count] [TYPE type]
+```
+
+1. **cursor（游标）**
+    - 起始值：0（开始一次新的迭代）
+    - 返回值：每次调用返回一个新的游标值
+    - 结束标志：返回 0 表示遍历完成
+
+2. **MATCH pattern（可选）**
+    - 用于匹配键名的模式（glob风格）
+    - 示例：`MATCH user:*` 匹配所有以 `user:` 开头的键
+
+3. **COUNT count（可选）**
+    - 提示值：建议每次返回的元素数量（实际返回可能不同）
+    - 默认值：10
+    - 作用：平衡遍历速度和服务器负载
+
+4. **TYPE type（可选，Redis 6.0+）**
+    - 按数据类型过滤
+    - 支持的类型：`string`, `list`, `set`, `zset`, `hash`, `stream` 等
+
+#### 使用示例
+
+**基本遍历**
+
+```shell
+# 插入测试数据
+127.0.0.1:6379> MSET key:1 value1 key:2 value2 key:3 value3 key:4 value4 key:5 value5
+OK
+
+# 第一次迭代
+127.0.0.1:6379> SCAN 0
+1) "5"                    # 下一个游标值
+2) 1) "key:3"            # 返回的键列表
+   2) "key:1"
+   3) "key:4"
+
+# 使用返回的游标继续
+127.0.0.1:6379> SCAN 5
+1) "12"
+2) 1) "key:5"
+   2) "key:2"
+
+# 继续直到游标为0
+127.0.0.1:6379> SCAN 12
+1) "0"                   # 游标为0表示迭代完成
+2) (empty list or set)   # 可能还有少量键，这里为空
+```
+
+**使用 MATCH 过滤**
+
+```shell
+# 插入不同类型的数据
+127.0.0.1:6379> SET user:1001 "John"
+127.0.0.1:6379> SET user:1002 "Jane"
+127.0.0.1:6379> SET session:1001 "abc123"
+127.0.0.1:6379> SET order:2001 "pending"
+127.0.0.1:6379> SET user:profile:1001 "{}"
+
+# 只匹配 user:* 模式的键
+127.0.0.1:6379> SCAN 0 MATCH user:*
+1) "10"
+2) 1) "user:1002"
+   2) "user:1001"
+
+127.0.0.1:6379> SCAN 10 MATCH user:*
+1) "0"
+2) 1) "user:profile:1001"
+```
+
+**使用 COUNT 控制批次大小**
+
+```shell
+# 插入20个测试键
+127.0.0.1:6379> EVAL "for i=1,20 do redis.call('SET', 'test:'..i, 'value'..i) end" 0
+
+# 使用小COUNT值（每次返回较少键）
+127.0.0.1:6379> SCAN 0 COUNT 3
+1) "7"
+2) 1) "test:18"
+   2) "test:12"
+   3) "test:6"
+
+# 使用大COUNT值（每次返回较多键）
+127.0.0.1:6379> SCAN 0 COUNT 20
+1) "9"
+2)  1) "test:18"
+    2) "test:12"
+    3) "test:6"
+    4) "test:4"
+    5) "test:11"
+    6) "test:1"
+    7) "test:3"
+    8) "test:20"
+    9) "test:5"
+   10) "test:19"
+   11) "test:10"
+   12) "test:14"
+   13) "test:7"
+   14) "test:13"
+   15) "test:16"
+```
+
+**使用 TYPE 过滤（Redis 6.0+）**
+```shell
+# 创建不同类型的数据
+127.0.0.1:6379> SET string_key "value"
+127.0.0.1:6379> HSET hash_key field1 "value1"
+127.0.0.1:6379> LPUSH list_key "item1" "item2"
+127.0.0.1:6379> SADD set_key "member1" "member2"
+127.0.0.1:6379> ZADD zset_key 1 "member1" 2 "member2"
+
+# 只查找哈希类型
+127.0.0.1:6379> SCAN 0 TYPE hash
+1) "0"
+2) 1) "hash_key"
+
+# 只查找列表类型
+127.0.0.1:6379> SCAN 0 TYPE list
+1) "0"
+2) 1) "list_key"
+```
